@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="股票 RSI、MACD、布林带和 ATR 参数实验工具">
+  <title>指标实验台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="指标实验台首页">
+      <span class="brand-mark">∿</span>
+      <span>指标实验台</span>
+    </a>
+    <div class="stock-picker">
+      <label class="search-box" for="stock-search">
+        <span class="search-icon">⌕</span>
+        <input id="stock-search" autocomplete="off" placeholder="搜索股票代码或名称" aria-label="搜索股票代码或名称" aria-expanded="false">
+      </label>
+      <div id="search-results" class="search-results" role="listbox" hidden></div>
+    </div>
+    <div id="selected-stock" class="selected-stock">00981.HK&nbsp;&nbsp;中芯国际</div>
+    <select id="date-preset" class="select-control" aria-label="日期区间">
+      <option value="3m">近3个月</option>
+      <option value="6m">近6个月</option>
+      <option value="1y" selected>近1年</option>
+      <option value="3y">近3年</option>
+      <option value="custom">自定义</option>
+    </select>
+    <div class="header-spacer"></div>
+    <button id="share-button" class="ghost-button" type="button">复制配置</button>
+    <div class="export-menu">
+      <button id="export-button" class="ghost-button" type="button">⇩&nbsp; 导出</button>
+      <div id="export-options" class="export-options" hidden>
+        <button id="export-png" type="button">导出图表 PNG</button>
+        <button id="export-csv" type="button">导出指标 CSV</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="date-panel" class="date-panel" hidden>
+    <label>开始日期 <input id="start-date" type="date" value="2025-07-02"></label>
+    <span>至</span>
+    <label>结束日期 <input id="end-date" type="date" value="2026-06-30"></label>
+    <button id="apply-date" class="primary-button" type="button">应用区间</button>
+  </section>
+
+  <main class="app-shell">
+    <aside class="parameter-panel panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">INDICATORS</p>
+          <h2>指标与参数</h2>
+        </div>
+        <span id="recompute-state" class="mini-state">实时</span>
+      </div>
+
+      <section class="indicator-control" data-indicator="bollinger">
+        <div class="control-title"><span>布林带</span><label class="switch"><input id="show-bollinger" type="checkbox" aria-label="显示布林带" checked><span></span></label></div>
+        <div class="field-row"><label for="bb-period">周期</label><input id="bb-period-range" type="range" min="2" max="120" value="20"><input id="bb-period" type="number" min="2" max="120" value="20"></div>
+        <div class="field-row"><label for="bb-multiplier">倍数</label><input id="bb-multiplier-range" type="range" min="0.5" max="5" step="0.1" value="2"><input id="bb-multiplier" type="number" min="0.5" max="5" step="0.1" value="2.0"></div>
+      </section>
+
+      <section class="indicator-control" data-indicator="rsi">
+        <div class="control-title"><span>RSI</span><label class="switch"><input id="show-rsi" type="checkbox" aria-label="显示 RSI" checked><span></span></label></div>
+        <div class="field-row"><label for="rsi-period">周期</label><input id="rsi-period-range" type="range" min="2" max="100" value="14"><input id="rsi-period" type="number" min="2" max="100" value="14"></div>
+        <div class="dual-field"><label>参考线</label><input id="rsi-upper" type="number" min="2" max="99" value="70" aria-label="RSI 上界"><span>/</span><input id="rsi-lower" type="number" min="1" max="98" value="30" aria-label="RSI 下界"></div>
+      </section>
+
+      <section class="indicator-control" data-indicator="macd">
+        <div class="control-title"><span>MACD</span><label class="switch"><input id="show-macd" type="checkbox" aria-label="显示 MACD" checked><span></span></label></div>
+        <div class="compact-fields">
+          <label>快线<input id="macd-fast" type="number" min="2" max="60" value="12"></label>
+          <label>慢线<input id="macd-slow" type="number" min="3" max="120" value="26"></label>
+          <label>信号<input id="macd-signal" type="number" min="2" max="60" value="9"></label>
+        </div>
+        <p id="macd-error" class="field-error" hidden>快线必须小于慢线</p>
+      </section>
+
+      <section class="indicator-control" data-indicator="atr">
+        <div class="control-title"><span>ATR</span><label class="switch"><input id="show-atr" type="checkbox" aria-label="显示 ATR" checked><span></span></label></div>
+        <div class="field-row"><label for="atr-period">周期</label><input id="atr-period-range" type="range" min="2" max="100" value="14"><input id="atr-period" type="number" min="2" max="100" value="14"></div>
+      </section>
+
+      <button id="reset-params" class="reset-button" type="button">↻&nbsp; 恢复默认参数</button>
+    </aside>
+
+    <section class="workspace panel">
+      <div class="workspace-header">
+        <div>
+          <p id="market-meta" class="eyebrow">未复权 · 港元</p>
+          <h1 id="workspace-title">00981.HK 中芯国际</h1>
+        </div>
+        <div class="chart-actions" role="group" aria-label="图表设置">
+          <button id="chart-candle" class="segmented active" type="button">K线</button>
+          <button id="chart-line" class="segmented" type="button">收盘价</button>
+          <label class="volume-toggle"><input id="show-volume" type="checkbox" checked> 成交量</label>
+          <button id="reset-zoom" class="icon-button" type="button" title="恢复全部区间">↔</button>
+        </div>
+      </div>
+      <div id="status-banner" class="status-banner loading">正在加载行情…</div>
+      <div id="chart-wrap" class="chart-wrap">
+        <canvas id="indicator-chart" aria-label="股票价格与技术指标图表"></canvas>
+        <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+      </div>
+      <div class="chart-help">滚轮缩放 · 拖拽平移 · 双击恢复 · 十字光标查看同日数据</div>
+    </section>
+
+    <aside class="insight-panel panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">SNAPSHOT</p><h2>最新指标</h2></div>
+        <span id="data-status-dot" class="status-dot"></span>
+      </div>
+      <div id="latest-date" class="latest-date">等待数据</div>
+      <div id="metric-cards" class="metric-cards"></div>
+      <section class="quality-card">
+        <h3>数据质量</h3>
+        <dl>
+          <div><dt>交易日</dt><dd id="quality-count">—</dd></div>
+          <div><dt>区间</dt><dd id="quality-range">—</dd></div>
+          <div><dt>来源</dt><dd id="quality-source">—</dd></div>
+        </dl>
+      </section>
+      <section class="interpretation-card">
+        <h3>描述性解读</h3>
+        <ul id="interpretation-list"><li>加载数据后显示。</li></ul>
+      </section>
+      <p class="disclaimer">技术指标基于历史价格，不构成投资建议。</p>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="{{ url_for('static', filename='indicators.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
